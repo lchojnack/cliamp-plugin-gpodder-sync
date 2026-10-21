@@ -973,6 +973,7 @@ function engine.auto_sync()
         if subs.should_adopt() then subs.adopt() end
         subs.pull()
         subs.push()
+        actions.pull()
         actions.flush()
         playlist.write()
     end)
