@@ -458,17 +458,29 @@ end
 -- actions: play actions + resume store
 local actions = {}
 
+-- The gpodder API counts started, position and total in whole seconds, and
+-- started is the playback position listening began at, not a clock time.
+-- Strict servers (gopodder) reject anything else with HTTP 400. flush also
+-- applies it to actions queued before this rule.
+function actions.normalize(action)
+    local position = math.floor(tonumber(action.position) or 0)
+    action.position = position
+    action.total = math.floor(tonumber(action.total) or 0)
+    action.started = math.min(math.floor(tonumber(action.started) or position), position)
+    return action
+end
+
 function actions.build(feed, episode, position, total)
-    return {
+    return actions.normalize({
         podcast = feed,
         episode = episode,
         device = device.id(),
         action = "play",
-        started = os.time(),
+        started = position,
         position = position,
         total = total,
         timestamp = util.iso_timestamp(),
-    }
+    })
 end
 
 function actions.pull()
@@ -534,6 +546,7 @@ end
 function actions.flush()
     local queued = store.get("pending_actions") or {}
     if #queued == 0 then return true, "no pending actions" end
+    for _, action in ipairs(queued) do actions.normalize(action) end
     local user = auth.username()
     if not user then return false, "no username configured" end
     local body, status = api.post("/api/2/episodes/" .. user .. ".json", queued)
