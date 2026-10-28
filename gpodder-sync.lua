@@ -1166,11 +1166,12 @@ end)
 
 -- cliamp wiring: event hooks
 p:on("track.scrobble", function(track)
-    -- cliamp scrobbles from 50% played; only from 99% does the episode count as finished,
-    -- before that the position where it was left is reported
+    -- cliamp scrobbles from 50% played; the episode counts as finished only by cliamp's own
+    -- played rule (within the last minute, a short one past its midpoint), otherwise the
+    -- position where it was left is reported
     local total = track.duration or 0
     local position = track.played_secs or 0
-    if total > 0 and position >= total * 0.99 then position = total end
+    if total > 0 and position >= math.max(total - 60, total / 2) then position = total end
     playback.report(track.path, position, total)
 end)
 
