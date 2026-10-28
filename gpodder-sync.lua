@@ -404,6 +404,39 @@ function subs.remove(url)
     return true, "unsubscribed locally; run 'gpodder-sync sync' to upload: " .. url
 end
 
+-- cliamp's own subscriptions (the Podcasts view, `f`) live in podcast_subscriptions.json.
+-- Shows that appeared or disappeared there since the last sync are queued like the
+-- subscribe and unsubscribe commands. Only changes count, so a show unsubscribed on
+-- another device is not added back while cliamp still lists it.
+function subs.import_cliamp()
+    local path = (os.getenv("HOME") or "") .. "/.config/cliamp/podcast_subscriptions.json"
+    if not cliamp.fs.exists(path) then return true, "no cliamp subscriptions" end
+    local data = cliamp.json.decode(cliamp.fs.read(path) or "")
+    if type(data) ~= "table" then return false, "cannot read " .. path end
+    local now = {}
+    for _, show in ipairs(data) do
+        if type(show) == "table" and type(show.feed_url) == "string" and show.feed_url ~= "" then
+            table.insert(now, show.feed_url)
+        end
+    end
+    local seen = store.get("cliamp_subscriptions")
+    local added, removed = 0, 0
+    for _, url in ipairs(now) do
+        if not util.has(subs.list(), url) and not (seen and util.has(seen, url)) then
+            subs.add(url)
+            added = added + 1
+        end
+    end
+    for _, url in ipairs(seen or {}) do
+        if not util.has(now, url) and util.has(subs.list(), url) then
+            subs.remove(url)
+            removed = removed + 1
+        end
+    end
+    store.set("cliamp_subscriptions", now)
+    return true, added .. " added, " .. removed .. " removed in cliamp"
+end
+
 function subs.should_adopt()
     if store.get("adopted") then return false end
     if #subs.list() > 0 then return false end
@@ -955,6 +988,7 @@ function engine.sync()
         step("adopt", subs.adopt)
     end
     step("pull", subs.pull)
+    step("cliamp", subs.import_cliamp)
     step("push", subs.push)
     step("playlist", playlist.sync_sources)
     step("actions", actions.pull)
@@ -972,6 +1006,7 @@ function engine.auto_sync()
         if not store.get("device_registered") then device.register() end
         if subs.should_adopt() then subs.adopt() end
         subs.pull()
+        subs.import_cliamp()
         subs.push()
         actions.pull()
         actions.flush()
