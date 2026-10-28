@@ -1216,7 +1216,8 @@ end)
 
 
 -- cliamp wiring: keybinds
-p:bind("ctrl+g", "gpodder: sync", function()
+-- ctrl+g belongs to cliamp's core
+p:bind("alt+g", "gpodder: sync", function()
     local ok, msg = engine.sync()
     cliamp.log.info(msg)
 end)

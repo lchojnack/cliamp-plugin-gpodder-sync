@@ -109,7 +109,7 @@ cliamp plugins call gpodder-sync status                # show config and sync st
 cliamp plugins call gpodder-sync logout                # clear credentials and local state
 ```
 
-Inside cliamp: `ctrl+g` runs a sync, `ctrl+p` refreshes the podcast source, and `alt+d` downloads
+Inside cliamp: `alt+g` runs a sync, `ctrl+p` refreshes the podcast source, and `alt+d` downloads
 and plays the current episode. Browse your podcasts under **Local Playlists → podcasts**
 (`Esc` or `b`), then pick a feed to load its latest episodes.
 
