@@ -976,10 +976,17 @@ function engine.logout()
     return "logged out and cleared local sync state"
 end
 
+-- cliamp stops a hook, key binding or timer after 5 seconds, which leaves engine.syncing
+-- set; a flag older than any real sync is treated as such a cut-off one.
+function engine.busy()
+    return engine.syncing and os.time() - (engine.syncing_since or 0) < 60
+end
+
 function engine.sync()
-    if engine.syncing then return false, "sync already in progress" end
+    if engine.busy() then return false, "sync already in progress" end
     if not auth.username() then return false, "not configured; run 'gpodder-sync login <user> <pass>'" end
     engine.syncing = true
+    engine.syncing_since = os.time()
     local results = {}
     local ok = true
     -- Each step runs in pcall so a throwing step (e.g. an unexpected Lua error)
@@ -1022,9 +1029,10 @@ function engine.sync()
 end
 
 function engine.auto_sync()
-    if engine.syncing then return end
+    if engine.busy() then return end
     if not auth.username() then return end
     engine.syncing = true
+    engine.syncing_since = os.time()
     local ok = pcall(function()
         if not store.get("device_registered") then device.register() end
         if subs.should_adopt() then subs.adopt() end
@@ -1257,7 +1265,10 @@ p:on("app.start", function()
     if config.bool("auto_sync", true) then
         local interval = tonumber(config.get("sync_interval_secs", 3600)) or 3600
         cliamp.timer.every(interval, engine.auto_sync)
-        cliamp.log.info("auto-sync enabled (every " .. interval .. "s)")
+        -- the light sync (positions and subscriptions, no feed refresh) fits the 5 s
+        -- limit of a timer; the first periodic one would come an interval later
+        cliamp.timer.after(1, engine.auto_sync)
+        cliamp.log.info("auto-sync enabled (at start and every " .. interval .. "s)")
     end
     cliamp.timer.every(tonumber(config.get("flush_interval_secs", 300)) or 300, function()
         if not auth.username() then return end
