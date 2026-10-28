@@ -64,6 +64,7 @@ password = "your-gpodder-password"
 # sync_interval_secs = 3600                    # subscription auto-sync interval
 # flush_interval_secs = 300                    # queued-action retry interval
 # position_sync_secs = 30                      # how often live position is uploaded
+# played_tail_secs   = 30                      # leaving an episode this close to its end marks it finished
 # auto_sync          = true
 # scrobble           = true                    # report play actions to gpodder.net
 # download_dir       = "~/Music/cliamp/gpodder" # where downloaded episodes land

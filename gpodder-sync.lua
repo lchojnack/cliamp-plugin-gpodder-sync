@@ -1167,11 +1167,12 @@ end)
 -- cliamp wiring: event hooks
 p:on("track.scrobble", function(track)
     -- cliamp scrobbles from 50% played; the episode counts as finished only within its last
-    -- 30 seconds, AntennaPod's default "smart mark as played" (a short one past its midpoint),
-    -- otherwise the position where it was left is reported
+    -- played_tail_secs (default 30, AntennaPod's "smart mark as played"; a short one past
+    -- its midpoint), otherwise the position where it was left is reported
+    local tail = tonumber(config.get("played_tail_secs", 30)) or 30
     local total = track.duration or 0
     local position = track.played_secs or 0
-    if total > 0 and position >= math.max(total - 30, total / 2) then position = total end
+    if total > 0 and position >= math.max(total - tail, total / 2) then position = total end
     playback.report(track.path, position, total)
 end)
 
