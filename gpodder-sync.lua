@@ -36,7 +36,7 @@ local QUEUE_LIMIT = 500 -- max buffered play actions waiting to upload
 local RESUME = {
     min_position = 15, -- ignore stored positions before this many seconds in
     max_fraction = 0.9, -- ignore stored positions this close to the end
-    seek_tolerance = 2, -- consider the seek done within this many seconds
+    seek_tolerance = 7, -- consider the seek done within this many seconds (cliamp's own resume lands 5 s early)
     seek_retries = 4, -- seek attempts before giving up (stream buffering)
     seek_delay = 1.0, -- seconds between seek attempts
 }
@@ -716,9 +716,11 @@ function playback.resume_to(path)
     local function try_seek()
         attempt = attempt + 1
         if attempt > RESUME.seek_retries then return end
-        local current = cliamp.player.position()
-        if current and current >= resume.position - RESUME.seek_tolerance then return end
-        cliamp.player.seek(resume.position)
+        local current = cliamp.player.position() or 0
+        if current >= resume.position - RESUME.seek_tolerance then return end
+        -- cliamp.player.seek is relative: seek by the distance, so cliamp's own resume
+        -- (it remembers podcast positions too) is not added on top
+        cliamp.player.seek(resume.position - current)
         cliamp.timer.after(RESUME.seek_delay, try_seek)
     end
     cliamp.timer.after(RESUME.seek_delay, try_seek)
