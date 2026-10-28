@@ -516,6 +516,28 @@ function actions.build(feed, episode, position, total)
     })
 end
 
+-- Hosts rename episode files (a new hash in the name) while the folder stays the same.
+-- known_folders maps each folder holding exactly one known episode to that episode, so an
+-- action for a URL this device does not know can find it; a shared folder matches nothing.
+local function episode_folder(url)
+    return (url:gsub("[?#].*$", "")):match("^(.+)/[^/]+$")
+end
+
+function actions.known_folders()
+    local folders = {}
+    for episode in pairs(store.get("episode_feed") or {}) do
+        local folder = episode_folder(episode)
+        if folder then folders[folder] = folders[folder] == nil and episode or false end
+    end
+    return folders
+end
+
+function actions.canonical(episode, folders)
+    if actions.feed_for(episode) then return episode end
+    local folder = episode_folder(episode)
+    return folder and folders[folder] or episode
+end
+
 function actions.pull()
     local user = auth.username()
     if not user then return false, "no username configured" end
@@ -528,8 +550,9 @@ function actions.pull()
     if not data then return false, "pull actions returned invalid JSON" end
     if data.timestamp then store.set("actions_since", data.timestamp) end
     local stored = store.get("resume") or {}
+    local folders = actions.known_folders()
     for _, action in ipairs(data.actions or {}) do
-        local ep = action.episode
+        local ep = action.episode and actions.canonical(action.episode, folders)
         if ep then
             local pos = tonumber(action.position) or 0
             if pos > 0 then
